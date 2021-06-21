@@ -1,19 +1,16 @@
-FROM java:openjdk-8-jdk-alpine
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 as builder
 
-RUN MAVEN_VERSION=3.3.3 \
- && cd /usr/share \
- && wget http://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz -O - | tar xzf - \
- && mv /usr/share/apache-maven-$MAVEN_VERSION /usr/share/maven \
- && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+WORKDIR /Worker
+COPY src/Worker/Worker.csproj .
+RUN dotnet restore
 
-WORKDIR /code
+COPY src/Worker/ .
+RUN dotnet publish -c Release -o /out Worker.csproj
 
-ADD pom.xml /code/pom.xml
-RUN ["mvn", "dependency:resolve"]
-RUN ["mvn", "verify"]
+# app image
+FROM mcr.microsoft.com/dotnet/core/runtime:3.1
 
-# Adding source, compile and package into a fat jar
-ADD src/main /code/src/main
-RUN ["mvn", "package"]
+WORKDIR /app
+ENTRYPOINT ["dotnet", "Worker.dll"]
 
-CMD ["java", "-jar", "target/worker-jar-with-dependencies.jar"]
+COPY --from=builder /out .
