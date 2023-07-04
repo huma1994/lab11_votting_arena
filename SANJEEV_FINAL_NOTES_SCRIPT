@@ -1,0 +1,3852 @@
+ _  __
+
+
+
+
+
+
+     _                          _                             _   _   _                                        
+| |/ /   _| |__   ___ _ __ _ __   ___| |_ ___  ___   _ __ ___  __ _| | | |_(_)_ __ ___   ___    __ _ _ __  _ __  ___ 
+| ' / | | | '_ \ / _ \ '__| '_ \ / _ \ __/ _ \/ __| | '__/ _ \/ _` | | | __| | '_ ` _ \ / _ \  / _` | '_ \| '_ \/ __|
+| . \ |_| | |_) |  __/ |  | | | |  __/ ||  __/\__ \ | | |  __/ (_| | | | |_| | | | | | |  __/ | (_| | |_) | |_) \__ \
+|_|\_\__,_|_.__/ \___|_|  |_| |_|\___|\__\___||___/ |_|  \___|\__,_|_|  \__|_|_| |_| |_|\___|  \__,_| .__/| .__/|___/
+                                                                                                    |_|   |_|        
+
+
+
+
+
+https://www.fosstechnix.com/install-prometheus-and-grafana-on-ubuntu/
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+[root@k8master my_controller_file]# pwd
+/root/my_controller_file
+
+
+[root@k8master my_controller_file]# ll
+total 20
+-rw-r--r--. 1 root root 391 Jun 17 14:54 deployement-defination.yml
+-rw-r--r--. 1 root root 170 Jun 17 09:19 pod-defination.yml
+-rw-r--r--. 1 root root 377 Jun 17 14:54 replicaSet-defination.yml
+-rw-r--r--. 1 root root 324 Jun 17 09:26 replicationCOntroller.yml
+-rw-r--r--. 1 root root 184 Jun 17 15:32 service-defination.yml
+
+
+
+
+[root@k8master my_controller_file]# vim pod-defination.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx
+
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# vim replicationCOntroller.yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp-rc
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 4
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# vim replicaSet-defination.yml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 8
+  selector:
+    matchLabels:
+      type: front-end
+
+
+
+
+
+[root@k8master my_controller_file]# vim deployement-defination.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deplyoment
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.25.1-alpine
+  replicas: 6
+  selector:
+    matchLabels:
+      type: front-end
+
+
+
+
+[root@k8master my_controller_file]# vim service-defination.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 80
+      port: 80
+      nodePort: 30008
+
+  selector:
+    app: myapp
+
+
+
+
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+K8 BASICS
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+
+
+
+[MASTER--k8]
+-------------------
+[root@k8master ~]# cat /etc/hosts
+192.168.10.200  k8master
+192.168.10.201  node1
+192.168.10.202  node2
+192.168.10.203  node3
+
+
+[root@k8master my_controller_file]# kubectl get all
+
+
+[root@k8master ~]# kubectl get nodes -w
+NAME       STATUS   ROLES           AGE     VERSION
+k8master   Ready    control-plane   5d21h   v1.27.2
+node1      Ready    <none>          5d20h   v1.27.2
+node2      Ready    <none>          5d20h   v1.27.2
+node3      Ready    <none>          5d20h   v1.27.2
+
+
+
+
+
+[root@k8master ~]# kubectl get nodes -o wide
+NAME       STATUS   ROLES           AGE     VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION          CONTAINER-RUNTIME
+k8master   Ready    control-plane   5d21h   v1.27.2   192.168.10.200   <none>        CentOS Stream 8   4.18.0-496.el8.x86_64   containerd://1.6.21
+node1      Ready    <none>          5d20h   v1.27.2   192.168.10.201   <none>        CentOS Stream 8   4.18.0-496.el8.x86_64   containerd://1.6.21
+node2      Ready    <none>          5d20h   v1.27.2   192.168.10.202   <none>        CentOS Stream 8   4.18.0-496.el8.x86_64   containerd://1.6.21
+node3      Ready    <none>          5d20h   v1.27.2   192.168.10.203   <none>        CentOS Stream 8   4.18.0-496.el8.x86_64   containerd://1.6.21
+
+
+
+
+
+===========================
+YAML in Kubernetes
+===========================
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+[root@master ~]# . .vimrc
+autocmd FIleType yaml setlocal ai ts=2 sw=2 et
+
+kubectl run <pod name> --image=<image_name>
+kubectl run javaapp4 --image=docker.io/huma11994/javakrepo_cct --dry-run=client -o yaml > secondpod.yml
+
+
+[root@k8master ~]# mkdir my_controller_file
+[root@k8master ~]# cd my_controller_file/
+
+
+
+
+
+[root@k8master my_controller_file]# vim pod-defination.yml		// firt sample file
+
+apiVersion: v1
+kind:
+metadata:
+
+spec
+
+
+[EDIT]
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx
+
+
+[root@k8master my_controller_file]# kubectl create -f pod-defination.yml --dry-run=client
+[root@k8master my_controller_file]# kubectl create -f pod-defination.yml
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods -w -o wide
+NAME        READY   STATUS              RESTARTS   AGE   IP       NODE    NOMINATED NODE   READINESS GATES
+myapp-pod   0/1     ContainerCreating   0          13s   <none>   node1   <none>           <none>
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe pods myapp-pod
+Name:             myapp-pod
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             node3/192.168.10.203
+Start Time:       Fri, 16 Jun 2023 16:21:59 +0545
+Labels:           app=myapp
+Annotations:      cni.projectcalico.org/containerID: 0e74da7842389467db9d40eb4db70d32ab636aff701c6b5ce59d2f57eb092f25
+                  cni.projectcalico.org/podIP: 172.16.135.24/32
+                  cni.projectcalico.org/podIPs: 172.16.135.24/32
+Status:           Running
+IP:               172.16.135.24
+IPs:
+  IP:  172.16.135.24
+Containers:
+  nginx-container:
+    Container ID:   containerd://72dc9b8fd0653beb3604fdafae3342167732da8be42fb78f5e1b3074b67c8de7
+    Image:          nginx
+    Image ID:       docker.io/library/nginx@sha256:593dac25b7733ffb7afe1a72649a43e574778bf025ad60514ef40f6b5d606247
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Fri, 16 Jun 2023 16:22:16 +0545
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-889p6 (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  kube-api-access-889p6:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  22s   default-scheduler  Successfully assigned default/myapp-pod to node3
+  Normal  Pulling    21s   kubelet            Pulling image "nginx"
+  Normal  Pulled     5s    kubelet            Successfully pulled image "nginx" in 16.312732239s (16.312837089s including waiting)
+  Normal  Created    5s    kubelet            Created container nginx-container
+  Normal  Started    5s    kubelet            Started container nginx-container
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods --show-labels  myapp-pod
+NAME        READY   STATUS    RESTARTS   AGE   LABELS
+myapp-pod   1/1     Running   0          97s   app=myapp
+
+
+
+
+
+[MASTER--k8]
+-------------------pycharm sw and pugins
+
+
+https://www.jetbrains.com/pycharm/download/#section=windows			// yml fies validating via pycharm
+
+https://www.jetbrains.com/help/pycharm/kubernetes.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-
+
+
+
+
+===========================
+CONTROLLER in K8
+
+Replication Controller and ReplicaSet
+===========================
+
+
+
+
+Replication Controller
+-------------------
+Replication Controller is one of the key features of Kubernetes, which is responsible for managing the pod lifecycle. 
+It is responsible for ensuring that the specified number of pod replicas are running at any point in time. 
+It is used in times when one wants to make sure that the specified number of pods or at least one pod is running. 
+It has the capability to bring up or down the specified no of pods
+
+
+
+
+ReplicaSets
+----------
+A ReplicaSet’s purpose is to run a specified number of pods at any given time.
+While ReplicaSets can be used independently, today it’s mainly used by Deployments as a mechanism to orchestrate pod creation, deletion, and updates.
+
+
+
+
+
+
+
+
+
+
+https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+
+https://www.mirantis.com/blog/kubernetes-replication-controller-replica-set-and-deployments-understanding-replication-options/
+
+https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#replicaset-as-an-horizontal-pod-autoscaler-target
+
+
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+-------------------ReplicationController
+
+
+
+[root@k8master my_controller_file]# vim replication-controller.yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp-rc
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 4
+
+[root@k8master my_controller_file]# kubectl get replicationcontrollers
+No resources found in default namespace.
+
+
+[root@k8master my_controller_file]# kubectl apply -f  replication-controller.yml
+replicationcontroller/myapp-rc created
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get replicationcontrollers
+NAME       DESIRED   CURRENT   READY   AGE
+myapp-rc   4         4         0       5s
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get replicationcontrollers  -o wide
+NAME       DESIRED   CURRENT   READY   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-rc   4         4         1       49s   nginx-container   nginx    app=myapp,type=front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get replicationcontrollers myapp-rc -w -o wide
+NAME       DESIRED   CURRENT   READY   AGE     CONTAINERS        IMAGES   SELECTOR
+myapp-rc   4         4         4       3m45s   nginx-container   nginx    app=myapp,type=front-end
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe replicationcontrollers myapp-rc
+
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+-------------------ReplicationController : High Avivablity or Healing property in RC
+
+
+[root@k8master my_controller_file]# cat replicationCOntroller.yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp-rc
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 4										// here 4 replicas
+
+
+
+[root@k8master ~]#  kubectl get replicationcontrollers myapp-rc -w -o wide
+NAME       DESIRED   CURRENT   READY   AGE    CONTAINERS        IMAGES   SELECTOR
+myapp-rc   4         4         4       7m7s   nginx-container   nginx    app=myapp,type=front-end		// 4 ready state
+
+
+[root@k8master my_controller_file]# kubectl get pods
+NAME             READY   STATUS    RESTARTS   AGE
+myapp-rc-5mjwd   1/1     Running   0          5m52s
+myapp-rc-87c2q   1/1     Running   0          2m44s			// lets delete / crash tis pod  ...i.e --- myapp-rc-87c2q
+myapp-rc-jz92b   1/1     Running   0          5m52s
+myapp-rc-rvhd5   1/1     Running   0          8m7s
+
+
+
+====OUTPUT===
+[root@k8master my_controller_file]# kubectl delete pod myapp-rc-87c2q
+pod "myapp-rc-87c2q" deleted
+
+
+
+
+[root@k8master ~]#  kubectl get replicationcontrollers myapp-rc -w -o wide
+NAME       DESIRED   CURRENT   READY   AGE     CONTAINERS        IMAGES   SELECTOR
+myapp-rc   4         4         4       7m39s   nginx-container   nginx    app=myapp,type=front-end
+
+myapp-rc   4         3         3       9m26s   nginx-container   nginx    app=myapp,type=front-end		// pod count = 3
+myapp-rc   4         4         3       9m26s   nginx-container   nginx    app=myapp,type=front-end		// HA or heal , count =4
+
+
+
+[root@k8master my_controller_file]# kubectl get pods
+NAME             READY   STATUS    RESTARTS   AGE
+myapp-rc-5mjwd   1/1     Running   0          8m20s
+myapp-rc-jz92b   1/1     Running   0          8m20s
+myapp-rc-kvzk9   1/1     Running   0          69s				// new healed pods added
+myapp-rc-rvhd5   1/1     Running   0          10m
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe replicationcontrollers myapp-rc | less
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+-------------------ReplicaSet
+
+https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#replicaset-as-an-horizontal-pod-autoscaler-target
+
+
+
+[root@k8master my_controller_file]# vim replicaSet-defination.yml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 4
+  selector:
+    matchLabels:
+      type: front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl create -f  replicaSet-defination.yml  --dry-run=client
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME                     READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE   READINESS GATES
+myapp-replicaset-58w2p   0/1     Pending   0          0s    <none>   <none>   <none>           <none>
+myapp-replicaset-58w2p   0/1     Pending   0          0s    <none>   node1    <none>           <none>
+myapp-replicaset-5nsrp   0/1     Pending   0          0s    <none>   <none>   <none>           <none>
+myapp-replicaset-v7j8f   0/1     Pending   0          0s    <none>   <none>   <none>           <none>
+myapp-replicaset-5nsrp   0/1     Pending   0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-v7j8f   0/1     Pending   0          0s    <none>   node2    <none>           <none>
+myapp-replicaset-58w2p   0/1     ContainerCreating   0          0s    <none>   node1    <none>           <none>
+myapp-replicaset-pw4cl   0/1     Pending             0          0s    <none>   <none>   <none>           <none>
+myapp-replicaset-pw4cl   0/1     Pending             0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-v7j8f   0/1     ContainerCreating   0          0s    <none>   node2    <none>           <none>
+myapp-replicaset-5nsrp   0/1     ContainerCreating   0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-pw4cl   0/1     ContainerCreating   0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-58w2p   0/1     ContainerCreating   0          0s    <none>   node1    <none>           <none>
+myapp-replicaset-v7j8f   0/1     ContainerCreating   0          0s    <none>   node2    <none>           <none>
+myapp-replicaset-5nsrp   0/1     ContainerCreating   0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-pw4cl   0/1     ContainerCreating   0          0s    <none>   node3    <none>           <none>
+myapp-replicaset-58w2p   1/1     Running             0          4s    172.16.166.135   node1    <none>           <none>
+myapp-replicaset-v7j8f   1/1     Running             0          4s    172.16.104.6     node2    <none>           <none>
+myapp-replicaset-5nsrp   1/1     Running             0          5s    172.16.135.5     node3    <none>           <none>
+myapp-replicaset-pw4cl   1/1     Running             0          8s    172.16.135.6     node3    <none>           <none>
+
+
+[[root@k8master ~]# kubectl get replicasets.apps myapp-replicaset -w -o wide
+NAME               DESIRED   CURRENT   READY   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-replicaset   4         4         4       63s   nginx-container   nginx    type=front-end
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods  -o wide
+NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-replicaset-58w2p   1/1     Running   0          2m39s   172.16.166.135   node1   <none>           <none>
+myapp-replicaset-5nsrp   1/1     Running   0          2m39s   172.16.135.5     node3   <none>           <none>
+myapp-replicaset-pw4cl   1/1     Running   0          2m39s   172.16.135.6     node3   <none>           <none>
+myapp-replicaset-v7j8f   1/1     Running   0          2m39s   172.16.104.6     node2   <none>           <none>
+
+
+
+
+
+
+
+
+[MASTER--k8]
+-------------------SCALING
+
+
+[root@k8master my_controller_file]# kubectl replace -f replicaSet-defination.yml			// on adding 3 to 8 replicas
+
+OR
+
+[root@k8master my_controller_file]# kubectl scale --replicas=6 -f replicaSet-defination.yml
+
+OR
+
+
+[root@k8master my_controller_file]# kubectl scale --replicas=6 replicaset myapp-replicaset
+
+
+
+
+
+=============OUTPUT===========
+
+[root@k8master ~]# kubectl get replicasets.apps myapp-replicaset -w -o wide
+NAME               DESIRED   CURRENT   READY   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-replicaset   4         4         4       63s   nginx-container   nginx    type=front-end
+
+
+
+myapp-replicaset   8         4         4       4m28s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         4         4       4m28s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         4       4m28s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         5       4m32s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         6       4m33s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         7       4m33s   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         8       4m36s   nginx-container   nginx    type=front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods -w -o wide
+NAME                     READY   STATUS              RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-replicaset-58w2p   1/1     Running             0          4m29s   172.16.166.135   node1   <none>           <none>
+myapp-replicaset-5nsrp   1/1     Running             0          4m29s   172.16.135.5     node3   <none>           <none>
+myapp-replicaset-m2v4l   0/1     ContainerCreating   0          1s      <none>           node2   <none>           <none>
+myapp-replicaset-nb8dr   0/1     ContainerCreating   0          1s      <none>           node1   <none>           <none>
+myapp-replicaset-pw4cl   1/1     Running             0          4m29s   172.16.135.6     node3   <none>           <none>
+myapp-replicaset-qjbsj   0/1     ContainerCreating   0          1s      <none>           node3   <none>           <none>
+myapp-replicaset-v7j8f   1/1     Running             0          4m29s   172.16.104.6     node2   <none>           <none>
+myapp-replicaset-vprsl   0/1     ContainerCreating   0          1s      <none>           node1   <none>           <none>
+myapp-replicaset-m2v4l   1/1     Running             0          4s      172.16.104.7     node2   <none>           <none>
+myapp-replicaset-qjbsj   1/1     Running             0          5s      172.16.135.7     node3   <none>           <none>
+myapp-replicaset-nb8dr   1/1     Running             0          5s      172.16.166.136   node1   <none>           <none>
+myapp-replicaset-vprsl   1/1     Running             0          8s      172.16.166.137   node1   <none>           <none>
+
+
+
+
+
+
+
+commands SUMMARY
+-------------
+https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#replicaset-as-an-horizontal-pod-autoscaler-target
+
+
+> kubectl create –f replicaset-definition.yml
+> kubectl get replicaset
+> kubectl delete replicaset myapp-replicaset 				//Also deletes all underlying PODs
+> kubectl replace -f replicaset-definition.yml
+> kubectl scale –replicas=6 -f replicaset-definition.yml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+-------------------HIGH avivablity ......SHELF HEALING FEATURE ... HA
+
+
+[root@k8master my_controller_file]# cat replicaSet-defination.yml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 8
+  selector:
+    matchLabels:
+      type: front-end
+
+
+
+[root@k8master ~]# kubectl get replicasets.apps myapp-replicaset -w -o wide
+NAME               DESIRED   CURRENT   READY   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-replicaset   12        12        12      12m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         12        12      12m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         12        12      12m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         8       12m   nginx-container   nginx    type=front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods -w -o wide
+NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-replicaset-5nsrp   1/1     Running   0          12m     172.16.135.5     node3   <none>           <none>			//Delete pod1
+myapp-replicaset-8q9rj   1/1     Running   0          6m2s    172.16.135.8     node3   <none>           <none>			//Delete pod2
+myapp-replicaset-9qv9h   1/1     Running   0          6m2s    172.16.135.9     node3   <none>           <none>
+myapp-replicaset-gmg24   1/1     Running   0          6m2s    172.16.104.9     node2   <none>           <none>
+myapp-replicaset-h2br9   1/1     Running   0          6m2s    172.16.166.140   node1   <none>           <none>
+myapp-replicaset-m2v4l   1/1     Running   0          8m27s   172.16.104.7     node2   <none>           <none>
+myapp-replicaset-pw4cl   1/1     Running   0          12m     172.16.135.6     node3   <none>           <none>
+myapp-replicaset-v7j8f   1/1     Running   0          12m     172.16.104.6     node2   <none>           <none>
+
+
+
+
+
+
+[root@k8master ~]# kubectl delete pods myapp-replicaset-5nsrp myapp-replicaset-8q9rj
+pod "myapp-replicaset-5nsrp" deleted
+pod "myapp-replicaset-8q9rj" deleted
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get pods -w -o wide
+NAME                     READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-replicaset-9qv9h   1/1     Running   0          7m57s   172.16.135.9     node3   <none>           <none>
+myapp-replicaset-ft28z   1/1     Running   0          38s     172.16.166.145   node1   <none>           <none>
+myapp-replicaset-gmg24   1/1     Running   0          7m57s   172.16.104.9     node2   <none>           <none>
+myapp-replicaset-h2br9   1/1     Running   0          7m57s   172.16.166.140   node1   <none>           <none>
+myapp-replicaset-m2v4l   1/1     Running   0          10m     172.16.104.7     node2   <none>           <none>
+myapp-replicaset-pw4cl   1/1     Running   0          14m     172.16.135.6     node3   <none>           <none>
+myapp-replicaset-t5c4z   1/1     Running   0          38s     172.16.166.146   node1   <none>           <none>				//new pod is created ...pod1
+myapp-replicaset-v7j8f   1/1     Running   0          14m     172.16.104.6     node2   <none>           <none>				//new pod is created ...pod2
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get replicasets.apps myapp-replicaset -w -o wide
+NAME               DESIRED   CURRENT   READY   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-replicaset   8         8         8       13m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         7         7       14m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         7         6       14m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         6       14m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         7       14m   nginx-container   nginx    type=front-end
+myapp-replicaset   8         8         8       14m   nginx-container   nginx    type=front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe replicasets myapp-replicaset | less
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+Deployment
+===========================
+
+The deployment provides us with capabilities to 
+>> upgrade the underlying instances seamlessly using rolling updates
+>> undo changes
+>> pause and resume
+>> changes to deployments.
+
+
+
+[[replicaset]] ==>> Deployements 
+
+ >> Deployments automitacally create REPLICASETS..
+
+
+
+
+For a minute, let us forget about PODs and replicasets and other kubernetes concepts
+and talk about how you might want to deploy your application in a production
+environment. 
+
+Say for example you have a web server that needs to be deployed in a
+production environment. 
+
+You need not ONE, but many such instances of the web server running for obvious reasons.
+Secondly, when newer versions of application builds become available on the docker
+registry, you would like to UPGRADE your docker instances seamlessly.
+
+However, when you upgrade your instances, you do not want to upgrade all of them
+at once as we just did. 
+
+This may impact users accessing our applications, so you may
+want to upgrade them one after the other. And that kind of upgrade is known as
+Rolling Updates.
+
+
+Suppose one of the upgrades you performed resulted in an unexpected error and you
+are asked to undo the recent update. 
+
+You would like to be able to rollBACK the changes that were recently carried out.
+Finally, say for example you would like to make multiple changes to your environment
+69 such as upgrading the underlying WebServer versions, as well as scaling your
+environment and also modifying the resource allocations etc. 
+
+You do not want to
+apply each change immediately after the command is run, instead you would like to
+apply a pause to your environment, make the changes and then resume so that all
+changes are rolled-out together.
+
+
+All of these capabilities are available with the kubernetes Deployments.
+So far in this course we discussed about PODs, which deploy single instances of our
+application such as the web application in this case. 
+
+Each container is encapsulated in
+PODs. Multiple such PODs are deployed using Replication Controllers or Replica Sets.
+And then comes Deployment which is a kubernetes object that comes higher in the
+hierarchy. 
+
+The deployment provides us with capabilities to upgrade the underlying instances seamlessly using rolling updates, undo changes, and pause and resume
+changes to deployments.
+
+
+
+
+
+
+
+
+> kubectl get deployments
+
+> kubectl get replicaset
+
+> kubectl get pods
+
+
+[root@k8master my_controller_file]# kubectl get all
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/myapp-replicaset-9qv9h   1/1     Running   0          26m
+pod/myapp-replicaset-ft28z   1/1     Running   0          19m
+pod/myapp-replicaset-gmg24   1/1     Running   0          26m
+pod/myapp-replicaset-h2br9   1/1     Running   0          26m
+pod/myapp-replicaset-m2v4l   1/1     Running   0          29m
+pod/myapp-replicaset-pw4cl   1/1     Running   0          33m
+pod/myapp-replicaset-t5c4z   1/1     Running   0          19m
+pod/myapp-replicaset-v7j8f   1/1     Running   0          33m
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   136m
+
+NAME                               DESIRED   CURRENT   READY   AGE
+replicaset.apps/myapp-replicaset   8         8         8       33m
+
+
+
+
+[root@k8master my_controller_file]# kubectl delete replicasets.apps myapp-replicaset
+replicaset.apps "myapp-replicaset" deleted
+
+
+
+[root@k8master my_controller_file]# kubectl get all
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   137m
+
+
+
+
+
+[MASTER--k8]
+-------------------
+
+[root@k8master my_controller_file]# vim deployement-defination.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deplyoment
+  labels:
+    app: myapp
+    type: front-end
+
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+  replicas: 3
+  selector:
+    matchLabels:
+      type: front-end
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl create -f deployement-defination.yml --dry-run=client
+
+
+[root@k8master my_controller_file]# kubectl get all
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   140m
+
+
+
+
+[root@k8master my_controller_file]# kubectl create -f deployement-defination.yml
+deployment.apps/myapp-deplyoment created
+
+
+
+[root@k8master ~]# kubectl get deployments.apps -w -o wide
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-deplyoment   0/3     0            0           0s    nginx-container   nginx    type=front-end
+myapp-deplyoment   0/3     0            0           0s    nginx-container   nginx    type=front-end
+myapp-deplyoment   0/3     0            0           1s    nginx-container   nginx    type=front-end
+myapp-deplyoment   0/3     3            0           1s    nginx-container   nginx    type=front-end
+myapp-deplyoment   1/3     3            1           5s    nginx-container   nginx    type=front-end
+myapp-deplyoment   2/3     3            2           5s    nginx-container   nginx    type=front-end
+myapp-deplyoment   3/3     3            3           5s    nginx-container   nginx    type=front-end
+
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get all
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          27s
+pod/myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          27s
+pod/myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          26s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   141m
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/myapp-deplyoment   3/3     3            3           27s
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/myapp-deplyoment-6ff5f7d548   3         3         3       27s				// deployement automayically create REPLICA-SET....
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get all  -o wide
+NAME                                    READY   STATUS    RESTARTS   AGE    IP               NODE    NOMINATED NODE   READINESS GATES
+pod/myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          3m7s   172.16.135.10    node3   <none>           <none>
+pod/myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          3m7s   172.16.104.10    node2   <none>           <none>
+pod/myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          3m6s   172.16.166.147   node1   <none>           <none>
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE    SELECTOR
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   144m   <none>
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS        IMAGES   SELECTOR
+deployment.apps/myapp-deplyoment   3/3     3            3           3m7s   nginx-container   nginx    type=front-end
+
+NAME                                          DESIRED   CURRENT   READY   AGE    CONTAINERS        IMAGES   SELECTOR
+replicaset.apps/myapp-deplyoment-6ff5f7d548   3         3         3       3m7s   nginx-container   nginx    pod-template-hash=6ff5f7d548,type=front-end
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe deployments.apps myapp-deplyoment | less
+
+[root@k8master my_controller_file]# kubectl describe replicasets.apps myapp-deplyoment-6ff5f7d548 | less
+
+
+
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe deployments.apps myapp-deplyoment
+Name:                   myapp-deplyoment
+Namespace:              default
+CreationTimestamp:      Sat, 17 Jun 2023 10:33:35 +0545
+Labels:                 app=myapp
+                        type=front-end
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               type=front-end
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=myapp
+           type=front-end
+  Containers:
+   nginx-container:
+    Image:        nginx
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   myapp-deplyoment-6ff5f7d548 (3/3 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  7m5s  deployment-controller  Scaled up replica set myapp-deplyoment-6ff5f7d548 to 3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe replicasets.apps myapp-deplyoment-6ff5f7d548
+Name:           myapp-deplyoment-6ff5f7d548
+Namespace:      default
+Selector:       pod-template-hash=6ff5f7d548,type=front-end
+Labels:         app=myapp
+                pod-template-hash=6ff5f7d548
+                type=front-end
+Annotations:    deployment.kubernetes.io/desired-replicas: 3
+                deployment.kubernetes.io/max-replicas: 4
+                deployment.kubernetes.io/revision: 1
+Controlled By:  Deployment/myapp-deplyoment
+Replicas:       3 current / 3 desired
+Pods Status:    3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=myapp
+           pod-template-hash=6ff5f7d548
+           type=front-end
+  Containers:
+   nginx-container:
+    Image:        nginx
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age    From                   Message
+  ----    ------            ----   ----                   -------
+  Normal  SuccessfulCreate  6m38s  replicaset-controller  Created pod: myapp-deplyoment-6ff5f7d548-npj25
+  Normal  SuccessfulCreate  6m37s  replicaset-controller  Created pod: myapp-deplyoment-6ff5f7d548-9zq67
+  Normal  SuccessfulCreate  6m37s  replicaset-controller  Created pod: myapp-deplyoment-6ff5f7d548-zjbgw
+
+
+
+
+
+
+
+
+
+
+
+-------------------SCALING
+
+
+[root@k8master my_controller_file]# kubectl replace -f deployement-defination.yml			// on adding 3 to 8 replicas
+
+OR
+
+[root@k8master my_controller_file]# kubectl scale --replicas=6 -f deployement-defination.yml
+
+OR
+
+
+[root@k8master my_controller_file]# kubectl scale --replicas=6 replicaset myapp-deplyoment
+
+
+
+=======EXAMPLE==========
+
+
+[root@k8master my_controller_file]# kubectl scale --replicas=6 -f deployement-defination.yml
+deployment.apps/myapp-deplyoment scaled
+
+
+[root@k8master ~]# kubectl get deployments.apps -w -o wide
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS        IMAGES   SELECTOR
+myapp-deplyoment   3/3     3            3           7m57s   nginx-container   nginx    type=front-end
+myapp-deplyoment   3/6     3            3           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   3/6     3            3           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   3/6     3            3           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   3/6     6            3           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   4/6     6            4           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   5/6     6            5           13m     nginx-container   nginx    type=front-end
+myapp-deplyoment   6/6     6            6           13m     nginx-container   nginx    type=front-end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl scale --replicas=9 -f deployement-defination.yml
+deployment.apps/myapp-deplyoment scaled
+
+
+
+
+
+[root@k8master ~]# kubectl get deployments.apps -w -o wide
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-deplyoment   6/6     6            6           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   6/9     6            6           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   6/9     6            6           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   6/9     6            6           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   6/9     9            6           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   7/9     9            7           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   8/9     9            8           16m   nginx-container   nginx    type=front-end
+myapp-deplyoment   9/9     9            9           16m   nginx-container   nginx    type=front-end
+
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME                                READY   STATUS    RESTARTS   AGE    IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          17m    172.16.135.10    node3   <none>           <none>
+myapp-deplyoment-6ff5f7d548-h7bnh   1/1     Running   0          4m1s   172.16.135.11    node3   <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          17m    172.16.104.10    node2   <none>           <none>
+myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          17m    172.16.166.147   node1   <none>           <none>
+myapp-deplyoment-6ff5f7d548-rjcpl   0/1     Pending   0          0s     <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-9jg99   0/1     Pending   0          0s     <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-rjcpl   0/1     Pending   0          0s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-7tn9g   0/1     Pending   0          0s     <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-7tn9g   0/1     Pending   0          0s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-5kqn8   0/1     Pending   0          0s     <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-4vspx   0/1     Pending   0          0s     <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-9jg99   0/1     Pending   0          0s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-rjcpl   0/1     ContainerCreating   0          0s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-5kqn8   0/1     Pending             0          0s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-4vspx   0/1     Pending             0          0s     <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9jg99   0/1     ContainerCreating   0          0s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-4vspx   0/1     ContainerCreating   0          0s     <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-5kqn8   0/1     ContainerCreating   0          0s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-7tn9g   0/1     ContainerCreating   0          0s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-4vspx   0/1     ContainerCreating   0          1s     <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-rjcpl   0/1     ContainerCreating   0          1s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9jg99   0/1     ContainerCreating   0          1s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-5kqn8   0/1     ContainerCreating   0          1s     <none>           node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-7tn9g   0/1     ContainerCreating   0          1s     <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-rjcpl   1/1     Running             0          5s     172.16.166.150   node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9jg99   1/1     Running             0          5s     172.16.104.13    node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-4vspx   1/1     Running             0          5s     172.16.135.13    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-5kqn8   1/1     Running             0          8s     172.16.166.151   node1    <none>           <none>
+myapp-deplyoment-6ff5f7d548-7tn9g   1/1     Running             0          8s     172.16.104.14    node2    <none>           <none>
+
+
+
+
+
+
+
+[MASTER--k8]
+------------------- HA / Healing
+
+root@k8master ~]# kubectl get all
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          19m
+pod/myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          19m
+pod/myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          19m
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   160m
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/myapp-deplyoment   3/3     3            3           19m
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/myapp-deplyoment-6ff5f7d548   3         3         3       19m
+
+
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get deployments.apps -w -o wide
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-deplyoment   3/3     3            3           19m   nginx-container   nginx    type=front-end
+
+
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          20m   172.16.135.10    node3   <none>           <none>				//delete1
+myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          20m   172.16.104.10    node2   <none>           <none>				//delete2
+myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          20m   172.16.166.147   node1   <none>           <none>
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl delete pods myapp-deplyoment-6ff5f7d548-9zq67 myapp-deplyoment-6ff5f7d548-npj25
+pod "myapp-deplyoment-6ff5f7d548-9zq67" deleted
+pod "myapp-deplyoment-6ff5f7d548-npj25" deleted
+
+
+
+[root@k8master ~]# kubectl get deployments.apps -w -o wide
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS        IMAGES   SELECTOR
+myapp-deplyoment   3/3     3            3           19m   nginx-container   nginx    type=front-end
+myapp-deplyoment   2/3     2            2           21m   nginx-container   nginx    type=front-end
+myapp-deplyoment   1/3     2            1           21m   nginx-container   nginx    type=front-end
+myapp-deplyoment   1/3     3            1           21m   nginx-container   nginx    type=front-end
+myapp-deplyoment   2/3     3            2           21m   nginx-container   nginx    type=front-end
+myapp-deplyoment   3/3     3            3           21m   nginx-container   nginx    type=front-end
+
+
+
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
+myapp-deplyoment-6ff5f7d548-9zq67   1/1     Running   0          20m   172.16.135.10    node3   <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   1/1     Running   0          20m   172.16.104.10    node2   <none>           <none>
+myapp-deplyoment-6ff5f7d548-zjbgw   1/1     Running   0          20m   172.16.166.147   node1   <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   1/1     Terminating   0          21m   172.16.135.10    node3   <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   1/1     Terminating   0          21m   172.16.104.10    node2   <none>           <none>
+myapp-deplyoment-6ff5f7d548-2wlgb   0/1     Pending       0          0s    <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-2wlgb   0/1     Pending       0          0s    <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-6rsp6   0/1     Pending       0          0s    <none>           <none>   <none>           <none>
+myapp-deplyoment-6ff5f7d548-6rsp6   0/1     Pending       0          0s    <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-6rsp6   0/1     ContainerCreating   0          0s    <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-2wlgb   0/1     ContainerCreating   0          0s    <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   1/1     Terminating         0          21m   172.16.135.10    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   1/1     Terminating         0          21m   172.16.104.10    node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   0/1     Terminating         0          21m   <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   0/1     Terminating         0          21m   <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-2wlgb   0/1     ContainerCreating   0          1s    <none>           node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-6rsp6   0/1     ContainerCreating   0          1s    <none>           node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   0/1     Terminating         0          21m   172.16.135.10    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   0/1     Terminating         0          21m   172.16.104.10    node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   0/1     Terminating         0          21m   172.16.104.10    node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-npj25   0/1     Terminating         0          21m   172.16.104.10    node2    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   0/1     Terminating         0          21m   172.16.135.10    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-9zq67   0/1     Terminating         0          21m   172.16.135.10    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-2wlgb   1/1     Running             0          5s    172.16.135.14    node3    <none>           <none>
+myapp-deplyoment-6ff5f7d548-6rsp6   1/1     Running             0          5s    172.16.104.15    node2    <none>           <none>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+DEPLOYEMENT - Rollout and Versioning
+===========================
+>> ADDING NEW versin of image , verioning of app
+
+
+
+
+Before we look at how we upgrade our application, let’s try to understand Rollouts
+and Versioning in a deployment. 
+Whenever you create a new deployment or upgrade
+the images in an existing deployment it triggers a Rollout.
+ 
+A rollout is the process of
+gradually deploying or upgrading your application containers. 
+
+When you first create a
+deployment, it triggers a rollout. A new rollout creates a new Deployment revision.
+Let’s call it revision 1. 
+
+In the future when the application is upgraded – meaning
+when the container version is updated to a new one – a new rollout is triggered and a
+new deployment revision is created named Revision 2. 
+
+This helps us keep track of the
+changes made to our deployment and enables us to rollback to a previous version of
+deployment if necessary.
+
+
+
+
+> kubectl rollout status deployment/myapp-deployment
+> kubectl rollout history deployment/myapp-deployment
+
+
+
+
+
+
+
+
+
+
+There are two types of deployment strategies. Say for example you have 5 replicas of
+your web application instance deployed. One way to upgrade these to a newer
+version is to destroy all of these and then create newer versions of application
+instances. Meaning first, destroy the 5 running instances and then deploy 5 new
+instances of the new application version. The problem with this as you can imagine,
+is that during the period after the older versions are down and before any newer
+version is up, the application is down and inaccessible to users. This strategy is
+known as the Recreate strategy, and thankfully this is NOT the default deployment
+strategy.
+
+The second strategy is were we do not destroy all of them at once. Instead we take
+down the older version and bring up a newer version one by one. This way the
+application never goes down and the upgrade is seamless.
+Remember, if you do not specify a strategy while creating the deployment, it will
+assume it to be Rolling Update. In other words, RollingUpdate is the default
+Deployment Strategy
+
+
+
+
+
+> kubectl apply –f deployment-definition.yml
+> kubectl set image deployment/myapp-deployment nginx=nginx:1.9.
+
+
+
+
+
+Recreate/RollingUpdate
+-----------------------
+The difference between the recreate and rollingupdate strategies can also be seen
+when you view the deployments in detail. 
+
+Run the kubectl describe deployment command to see detailed information regarding the deployments. 
+
+You will notice when the Recreate strategy was used the events indicate that the old replicaset was
+scaled down to 0 first and the new replica set scaled up to 5. 
+
+However when the RollingUpdate strategy was used the old replica set was scaled down one at a time
+simultaneously scaling up the new replica set one at a time.
+
+
+
+
+
+
+
+
+
+
+
+Upgrades
+---------
+
+
+
+Let’s look at how a deployment performs an upgrade under the hoods. When a new
+deployment is created, say to deploy 5 replicas, it first creates a Replicaset
+automatically, which in turn creates the number of PODs required to meet the
+number of replicas. When you upgrade your application as we saw in the previous
+slide, the kubernetes deployment object creates a NEW replicaset under the hoods
+and starts deploying the containers there. At the same time taking down the PODs in
+the old replica-set following a RollingUpdate strategy.
+
+This can be seen when you try to list the replicasets using the kubectl get replicasets
+command. Here we see the old replicaset with 0 PODs and the new replicaset with 5
+PODs.
+
+
+
+
+Rollback
+----------
+> kubectl get replicasets
+> kubectl run nginx --image=nginx
+
+
+
+
+
+
+Say for instance once you upgrade your application, you realize something isn’t very
+right. Something’s wrong with the new version of build you used to upgrade. So you
+would like to rollback your update. Kubernetes deployments allow you to rollback to
+a previous revision. To undo a change run the command kubectl rollout undo
+followed by the name of the deployment. 
+
+The deployment will then destroy the
+PODs in the new replicaset and bring the older ones up in the old replicaset. And your
+application is back to its older format.
+When you compare the output of the kubectl get replicasets command, before and
+after the rollback, you will be able to notice this difference. Before the rollback the
+first replicaset had 0 PODs and the new replicaset had 5 PODs and this is reversed
+after the rollback is finished.
+
+
+
+
+
+
+
+
+
+
+Summarize Commands
+-------------------
+Create
+------ > kubectl create –f deployment-definition.yml
+
+Get
+-----  > kubectl get deployments
+
+
+Update
+------- > kubectl apply –f deployment-definition.yml
+	> kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+
+
+Status
+-------	> kubectl rollout status deployment/myapp-deployment
+	> kubectl rollout history deployment/myapp-deployment
+
+
+Rollback
+-------- > kubectl rollout undo deployment/myapp-deployment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+[MASTER--k8]
+-------------------
+
+[root@k8master ~]# kubectl rollout status deployment/myapp-deplyoment
+deployment "myapp-deplyoment" successfully rolled out
+
+
+
+
+
+[root@k8master ~]# kubectl rollout history deployment/myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         <none>
+
+
+
+
+
+[root@k8master ~]# kubectl delete deployments.apps myapp-deplyoment
+deployment.apps "myapp-deplyoment" deleted				// to view above comand
+
+[root@k8master ~]# kubectl get all
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   3h1m
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl create -f deployement-defination.yml --record			// -- record will add the version added , and redo history of image
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/myapp-deplyoment created									// flag record added
+
+[root@k8master ~]# kubectl get  pods -w -o wide
+[root@k8master ~]# kubectl get all
+
+[root@k8master my_controller_file]# kubectl get deployments.apps myapp-deplyoment
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+myapp-deplyoment   3/3     3            3           65s
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout status deployment myapp-deplyoment
+deployment "myapp-deplyoment" successfully rolled out
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout history deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=deployement-defination.yml --record=true
+
+
+
+
+go docker hub, get new version / tag of image
+---------------------------------------------
+
+
+[root@k8master my_controller_file]# vim deployement-defination.yml
+   spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.12
+
+
+
+
+[root@k8master my_controller_file]# kubectl apply -f deployement-defination.yml
+Warning: resource deployments/myapp-deplyoment is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+deployment.apps/myapp-deplyoment configured
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout status deployment myapp-deplyoment
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 old replicas are pending termination...
+deployment "myapp-deplyoment" successfully rolled out
+
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl describe deployments.apps myapp-deplyoment  | grep nginx
+   nginx-container:
+    Image:        nginx:1.12
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout history deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=deployement-defination.yml --record=true
+2         kubectl create --filename=deployement-defination.yml --record=true				// this says that new image is been updated
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+------------------- adding a new version of image on CLI
+
+[root@k8master my_controller_file]# kubectl set image  deployment myapp-deplyoment nginx-container=nginx:1.12-perl
+
+
+
+[root@k8master my_controller_file]# kubectl rollout status deployment myapp-deplyoment
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 old replicas are pending termination...
+deployment "myapp-deplyoment" successfully rolled out
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout history deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=deployement-defination.yml --record=true
+2         kubectl create --filename=deployement-defination.yml --record=true
+3         kubectl create --filename=deployement-defination.yml --record=true			// here is the change
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl describe deployments.app | grep nginx
+   nginx-container:
+    Image:        nginx:1.12-perl
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+------------------- ROLLBACK... making undo of old image
+
+[root@k8master my_controller_file]# kubectl rollout undo deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment rolled back
+
+
+[root@k8master my_controller_file]# kubectl rollout status deployment myapp-deplyoment
+deployment "myapp-deplyoment" successfully rolled out
+
+
+[root@k8master my_controller_file]# kubectl describe deployments.app | grep nginx
+   nginx-container:
+    Image:        nginx:1.12
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout history deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=deployement-defination.yml --record=true
+3         kubectl create --filename=deployement-defination.yml --record=true
+4         kubectl create --filename=deployement-defination.yml --record=true			//changes attempt
+
+
+
+
+
+
+
+
+
+[MASTER--k8]
+------------------- SIMULATE error on  deployement-defination.yml file
+
+[root@k8master my_controller_file]# vim deployement-defination.yml
+spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.12-err
+
+
+
+[root@k8master my_controller_file]# kubectl apply -f deployement-defination.yml
+deployment.apps/myapp-deplyoment configured
+
+
+
+[root@k8master my_controller_file]# kubectl rollout status deployment myapp-deplyoment
+Waiting for deployment "myapp-deplyoment" rollout to finish: 1 out of 3 new replicas have been updated...		/STUCK 
+
+
+
+
+[root@k8master ~]# kubectl get  pods -w -o wide
+
+myapp-deplyoment-687669bc5d-rgddm   0/1     Pending   0          0s      <none>           node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ContainerCreating   0          0s      <none>           node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ContainerCreating   0          0s      <none>           node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ErrImagePull        0          4s      172.16.135.19    node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ImagePullBackOff    0          17s     172.16.135.19    node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ErrImagePull        0          35s     172.16.135.19    node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ImagePullBackOff    0          49s     172.16.135.19    node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ErrImagePull        0          63s     172.16.135.19    node3    <none>           <none>
+myapp-deplyoment-687669bc5d-rgddm   0/1     ImagePullBackOff    0          74s     172.16.135.19    node3    <none>           <none>
+
+
+
+
+[root@k8master my_controller_file]#  kubectl rollout history deployment myapp-deplyoment
+deployment.apps/myapp-deplyoment
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=deployement-defination.yml --record=true
+3         kubectl create --filename=deployement-defination.yml --record=true
+4         kubectl create --filename=deployement-defination.yml --record=true
+5         kubectl create --filename=deployement-defination.yml --record=true
+
+
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl rollout undo deployment myapp-deplyoment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+Kubernetes Networking - 101
+
+Cluster Networking
+===========================
+
+• IP Address is assigned to a POD
+
+• All containers/PODs can communicate to one another without NAT
+
+• All nodes can communicate with all containers and vice-versa without NAT
+
+
+
+
+
+Services Types
+==================
+NodePort 	ClusterIP 	LoadBalancer
+
+
+
+NodePort 
+
+------***--------
+-		-
+-		-
+-----------------
+
+
+ClusterIP 
+
+-----------------
+-		-
+-	***	-
+-		-
+-----------------
+
+
+LoadBalancer
+
+-**----**---**---
+-		-
+-		-
+-----------------
+
+
+
+
+
+NodePort 
+
+------***--------
+-		-
+-		-
+-----------------
+
+vim service-definition.yml			//sample
+
+apiVersion: v1
+kind: Service
+metadata:
+	name: myapp-service
+spec: 
+	type: NodePort
+	ports:
+	  - targetPort: 80
+	     port: 80
+	     nodePort: 30008
+
+	selector:
+	  app: myapp 
+	  type: front-end
+		
+
+-----------------------------------------------------------------------
+1. targetPort(POD) 80  >> 2. service 80  >> 3. NodePort  30008	
+-------------------------------------------------------------------------
+
+Range (30000-32767)
+
+-----------------------------------------------------------------------
+1. targetPort(POD) 80 (LABELS) >> 2. service 80 (SLECTORS) >> 3. NodePort  30008	
+-------------------------------------------------------------------------
+
+
+
+
+[MASTER--k8]
+-------------------
+
+[root@k8master my_controller_file]# kubectl get all
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/myapp-deplyoment-7fcbcbf855-5k56j   1/1     Running   0          141m
+pod/myapp-deplyoment-7fcbcbf855-5nbkd   1/1     Running   0          141m
+pod/myapp-deplyoment-7fcbcbf855-dc8cp   1/1     Running   0          141m
+pod/myapp-deplyoment-7fcbcbf855-ds94k   1/1     Running   0          141m
+pod/myapp-deplyoment-7fcbcbf855-g9fxs   1/1     Running   0          141m
+pod/myapp-deplyoment-7fcbcbf855-vptd2   1/1     Running   0          141m
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   7h14m
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/myapp-deplyoment   6/6     6            6           150m
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/myapp-deplyoment-5df9777b96   0         0         0       150m
+replicaset.apps/myapp-deplyoment-645ddf796b   0         0         0       149m
+replicaset.apps/myapp-deplyoment-7fcbcbf855   6         6         6       141m
+
+
+
+[root@k8master my_controller_file]# vim service-defination.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 80
+      port: 80
+      nodePort: 30008
+
+  selector:
+    app: myapp
+
+
+[root@k8master my_controller_file]# kubectl create -f service-defination.yml
+service/myapp-service created
+
+
+
+
+[root@k8master my_controller_file]# kubectl get deployments.apps myapp-deplyoment --show-labels
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE    LABELS
+myapp-deplyoment   6/6     6            6           157m   app=myapp,type=front-end
+
+
+
+
+
+[root@k8master my_controller_file]# kubectl get svc
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+kubernetes      ClusterIP   10.96.0.1        <none>        443/TCP        7h21m
+myapp-service   NodePort    10.109.244.118   <none>        80:30008/TCP   94s
+
+
+
+
+[root@k8master my_controller_file]# kubectl get svc -o wide
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+kubernetes      ClusterIP   10.96.0.1        <none>        443/TCP        7h21m   <none>
+myapp-service   NodePort    10.109.244.118   <none>        80:30008/TCP   101s    app=myapp
+
+
+**************************
+Browser
+**************************
+http://192.168.10.200:30008/
+
+http://192.168.10.201:30008/
+http://192.168.10.202:30008/
+http://192.168.10.203:30008/
+**************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+MICROSERVICE
+
+
+example-voting-app-kubernetes-v1
+===========================
+
+
+
+
+****************************************************************
+1. Votting app ,python   ==> 2. in memory DB , redis ==> 3. worker, .NET  ==> 4. DB, postgress ==> 
+5. result app, node-js
+****************************************************************
+
+
+
+
+
+1. Votting app ,python  
+------------------------
+
+
+
+2. in memory DB , redis
+------------------------
+
+
+3. worker, .NET
+-------------------
+
+
+4. DB, postgress
+-------------------
+
+
+5. result app, node-js
+------------------------
+
+
+
+
+
+[Architectutre to work in k8]
+-------------------
+1. Votting app ,python  
+------------------------
+c. docker run -d --name=vote -p 5000:80 voting-app
+c.1 docker run -d --name=vote -p 5000:80 --link redis:redis voting-app
+
+
+
+
+2. in memory DB , redis
+------------------------
+a. docker run -d --name=redis redis
+
+
+
+
+3. worker, .NET
+-------------------
+d. docker run -d --name=worker worker
+d.3 docker run -d --name=worker  --link db:db ---link redis:redis  worker  
+
+
+4. DB, postgress
+-------------------
+b. docker run -d --name=db postgress:9.4
+
+
+
+
+5. result app, node-js
+------------------------
+e. docker run -d --name=result -p 5001:80 result-app
+e.2 docker run -d --name=result -p 5001:80 --link db:db result-app
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+Creating a K8's POD's
+===========================
+
+[MASTER--k8]
+------------------- defination file of yml for 
+
+
+postgres-pod.yml  result-app-pod.yml  worker-app-pod.yml
+redis-pod.yml     voting-app-pod.yml
+
+
+
+
+[root@k8master ~]# pwd
+/root
+[root@k8master ~]# mkdir voting_app
+[root@k8master ~]# cd voting_app/
+[root@k8master voting_app]# pwd
+/root/voting_app
+
+
+[root@k8master voting_app]# vim voting-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: voting-app-pod
+  labels:
+    name: voting-app-pod
+    app: demo-voting-app
+
+spec:
+  containers:
+    - name: voting-app
+      image: dockersamples/examplevotingapp_vote
+      ports:
+      - containerPort: 80
+
+[root@k8master voting_app]# kubectl create -f  voting-app-pod.yml  --dry-run=client
+
+
+
+
+
+
+
+[root@k8master voting_app]# vim worker-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: worker-app-pod
+  labels:
+    name: worker-app-pod
+    app: demo-voting-app
+
+spec:
+  containers:
+    - name: worker-app
+      image: dockersamples/examplevotingapp_worker
+
+[root@k8master voting_app]# kubectl create -f worker-app-pod.yml --dry-run=client
+
+
+
+
+
+
+
+
+[root@k8master voting_app]# vim result-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: result-app-pod
+  labels:
+    name: result-app-pod
+    app: demo-voting-app
+
+spec:
+  containers:
+    - name: result-app
+      image: dockersamples/examplevotingapp_result
+      ports:
+      - containerPort: 80
+
+[root@k8master voting_app]# kubectl create -f  result-app-pod.yml --dry-run=client
+
+        
+
+
+
+
+
+
+
+
+
+[root@k8master voting_app]# vim redis-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-pod
+  labels:
+    name: redis-pod
+    app: demo-voting-app
+
+spec:
+  containers:
+    - name: redis
+      image: redis
+      ports:
+      - containerPort: 6379
+
+
+[root@k8master voting_app]# kubectl create -f  redis-pod.yml --dry-run=client
+pod/redis-pod created (dry run)
+
+
+
+
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres-pod
+  labels:
+    name: postgres-pod
+    app: demo-voting-app
+
+spec:
+  containers:
+    - name: postgres
+      image: postgres:9.4
+      ports:
+      - containerPort: 5432
+
+[root@k8master voting_app]# kubectl create -f  postgres-pod.yml  --dry-run=client
+
+
+
+
+
+
+
+
+
+
+=========================================
+Creating Services - ClusterIP-Internal
+=========================================
+postgres-service.yml  		redis-service.yml
+
+
+[MASTER--k8]
+------------------- defination file of yml for service -- internally 
+
+
+
+[root@k8master voting_app]# vim redis-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    name: redis-service
+    app: demo-voting-app
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    name: redis-pod
+    app: demo-voting-app
+
+
+[root@k8master voting_app]# kubectl create -f  redis-service.yml  --dry-run=client
+
+
+
+
+
+[root@k8master voting_app]# vim postgres-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    name: db-service
+    app: demo-voting-app
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    name: postgres-pod
+    app: demo-voting-app
+
+
+[root@k8master voting_app]# kubectl create -f  postgres-service.yml  --dry-run=client
+
+
+
+
+
+
+=========================================
+Creating Services - Load Balancer- external
+=========================================
+result-app-service.ym	  voting-app-service.yml
+
+
+
+
+[root@k8master voting_app]# vim voting-app-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: voting-service
+  labels:
+    name: voting-service
+    app: demo-voting-app
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    name: voting-app-pod
+    app: demo-voting-app
+
+[root@k8master voting_app]# kubectl create -f  voting-app-service.yml  --dry-run=client
+
+
+
+
+
+
+
+[root@k8master voting_app]# vim result-app-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-service
+  labels:
+    name: result-service
+    app: demo-voting-app
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    name: result-app-pod
+    app: demo-voting-app
+
+[root@k8master voting_app]# kubectl create -f  result-app-service.yml  --dry-run=client
+
+
+
+
+
+
+
+===========================
+listing all files
+===========================
+
+[root@k8master voting_app]# pwd
+/root/voting_app
+
+
+[root@k8master voting_app]# ls
+postgres-pod.yml      redis-service.yml       voting-app-pod.yml
+postgres-service.yml  result-app-pod.yml      voting-app-service.yml
+redis-pod.yml         result-app-service.yml  worker-app-pod.yml
+
+
+
+[root@k8master voting_app]# ll
+total 36
+-rw-r--r-- 1 root root 227 Jun 18 14:56 postgres-pod.yml
+-rw-r--r-- 1 root root 217 Jun 18 15:10 postgres-service.yml
+-rw-r--r-- 1 root root 211 Jun 18 14:52 redis-pod.yml
+-rw-r--r-- 1 root root 220 Jun 18 15:06 redis-service.yml
+-rw-r--r-- 1 root root 256 Jun 18 14:51 result-app-pod.yml
+-rw-r--r-- 1 root root 253 Jun 18 15:23 result-app-service.yml
+-rw-r--r-- 1 root root 254 Jun 18 14:50 voting-app-pod.yml
+-rw-r--r-- 1 root root 253 Jun 18 15:17 voting-app-service.yml
+-rw-r--r-- 1 root root 217 Jun 18 14:50 worker-app-pod.yml
+
+
+
+
+
+
+
+
+
+
+
+[root@k8master voting_app]# kubectl get all
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   31h
+
+
+
+
+[root@k8master voting_app]# kubectl get pods
+No resources found in default namespace.
+
+
+
+[root@k8master voting_app]# kubectl get services
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   31h
+
+
+
+
+
+
+===========================================
+Create pod for voting-app-pod.yml
+===========================================
+
+[MASTER--k8]
+-------------------
+
+
+[root@k8master voting_app]# kubectl create -f voting-app-pod.yml
+pod/voting-app-pod created
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME             READY   STATUS    RESTARTS   AGE   IP              NODE    NOMINATED NODE   READINESS GATES
+voting-app-pod   1/1     Running   0          24s   172.16.104.47   node2   <none>           <none>
+
+[root@k8master ~]# kubectl describe pods voting-app-pod  | less
+
+
+
+===========================================
+Run service to accessible from externally as voting-app-service.yml
+===========================================
+
+
+[root@k8master voting_app]# kubectl create -f voting-app-service.yml
+service/voting-service created
+
+[root@k8master ~]# kubectl get svc voting-service -w -o wide
+NAME             TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+voting-service   LoadBalancer   10.106.142.155   <pending>     80:31654/TCP
+
+
+
+
+
+
+
+
+===========================
+From Browser 
+
+run from master or slave IP:external_port
+
+http://192.168.10.200:31654/
+http://192.168.10.201:31654/
+http://192.168.10.202:31654/
+http://192.168.10.203:31654/
+===========================
+
+
+
+
+
+
+
+
+===================================================
+Create redis pod and service for fast memory 
+===================================================
+
+[root@k8master voting_app]# kubectl create -f redis-pod.yml
+pod/redis-pod created
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME             READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
+redis-pod        1/1     Running   0          23s   172.16.166.134   node1   <none>           <none>
+voting-app-pod   1/1     Running   0          13m   172.16.104.47    node2   <none>           <none>
+
+
+
+
+
+
+
+
+
+[root@k8master voting_app]# kubectl create -f redis-service.yml
+service/redis created
+
+
+
+
+[root@k8master ~]# kubectl get svc  -w -o wide
+NAME             TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+kubernetes       ClusterIP      10.96.0.1        <none>        443/TCP        31h   <none>
+redis            ClusterIP      10.100.93.72     <none>        6379/TCP       20s   app=demo-voting-app,name=redis-pod
+voting-service   LoadBalancer   10.106.142.155   <pending>     80:31654/TCP
+
+
+
+
+
+
+
+===================================================
+Create postgress pod and service for DBMS 
+===================================================
+
+
+[root@k8master voting_app]# kubectl create -f postgres-pod.yml
+pod/postgres-pod created
+
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME             READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
+postgres-pod     1/1     Running   0          8s    172.16.135.58    node3   <none>           <none>
+redis-pod        1/1     Running   0          14m   172.16.166.134   node1   <none>           <none>
+voting-app-pod   1/1     Running   0          27m   172.16.104.47    node2   <none>           <none>
+
+
+[root@k8master ~]# kubectl describe pods  postgres-pod | less
+
+
+
+
+[root@k8master voting_app]# kubectl create -f postgres-service.yml
+service/db created
+
+
+[root@k8master ~]# kubectl get services db -w -o wide
+NAME   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE    SELECTOR
+db     ClusterIP   10.99.184.12   <none>        5432/TCP   102s   app=demo-voting-app,name=postgres-pod
+
+
+
+
+
+
+
+
+
+
+
+===================================================
+Start the worker pod
+===================================================
+
+
+[root@k8master voting_app]# kubectl create -f worker-app-pod.yml
+pod/worker-app-pod created
+
+
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME             READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+postgres-pod     1/1     Running   0          7m12s   172.16.135.58    node3   <none>           <none>
+redis-pod        1/1     Running   0          21m     172.16.166.134   node1   <none>           <none>
+voting-app-pod   1/1     Running   0          34m     172.16.104.47    node2   <none>           <none>
+worker-app-pod   1/1     Running   0          30s     172.16.166.136   node1   <none>           <none>
+
+
+
+
+
+
+===================================================
+Start the result  pod and service -- view from client side
+===================================================
+
+[root@k8master voting_app]# kubectl create -f result-app-pod.yml
+pod/result-app-pod created
+
+
+[root@k8master ~]# kubectl get pods -w -o wide
+NAME             READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+postgres-pod     1/1     Running   0          9m9s    172.16.135.58    node3   <none>           <none>
+redis-pod        1/1     Running   0          23m     172.16.166.134   node1   <none>           <none>
+result-app-pod   1/1     Running   0          44s     172.16.104.48    node2   <none>           <none>
+voting-app-pod   1/1     Running   0          36m     172.16.104.47    node2   <none>           <none>
+worker-app-pod   1/1     Running   0          2m27s   172.16.166.136   node1   <none>           <none>
+
+
+
+
+
+
+[root@k8master voting_app]# kubectl create -f result-app-service.yml
+service/result-service created
+
+
+
+
+[root@k8master ~]# kubectl get services result-service  -w -o wide
+NAME             TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+result-service   LoadBalancer   10.96.131.185   <pending>     80:32673/TCP   28s   app=demo-voting-app,name=result-app-pod
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+From Browser 
+
+run from master or slave IP:external_port
+
+http://192.168.10.200:32673/
+http://192.168.10.201:32673/
+http://192.168.10.202:32673/
+http://192.168.10.203:32673/
+===========================
+
+
+
+
+
+
+
+
+
+
+
+===========================
+Summary
+
+https://github.com/mmumshad/kubernetes-example-voting-app
+
+===========================
+
+
+[root@k8master ~]# kubectl get all
+NAME                 READY   STATUS    RESTARTS   AGE
+pod/postgres-pod     1/1     Running   0          13m
+pod/redis-pod        1/1     Running   0          27m
+pod/result-app-pod   1/1     Running   0          5m12s
+pod/voting-app-pod   1/1     Running   0          40m
+pod/worker-app-pod   1/1     Running   0          6m55s
+
+NAME                     TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/db               ClusterIP      10.99.184.12     <none>        5432/TCP       12m
+service/kubernetes       ClusterIP      10.96.0.1        <none>        443/TCP        31h
+service/redis            ClusterIP      10.100.93.72     <none>        6379/TCP       25m
+service/result-service   LoadBalancer   10.96.131.185    <pending>     80:32673/TCP   3m58s
+service/voting-service   LoadBalancer   10.106.142.155   <pending>     80:31654/TCP   38m
+
+
+
+
+
+[root@k8master ~]# kubectl get pods -o wide
+NAME             READY   STATUS    RESTARTS   AGE     IP               NODE    NOMINATED NODE   READINESS GATES
+postgres-pod     1/1     Running   0          13m     172.16.135.58    node3   <none>           <none>
+redis-pod        1/1     Running   0          28m     172.16.166.134   node1   <none>           <none>
+result-app-pod   1/1     Running   0          5m32s   172.16.104.48    node2   <none>           <none>
+voting-app-pod   1/1     Running   0          41m     172.16.104.47    node2   <none>           <none>
+worker-app-pod   1/1     Running   0          7m15s   172.16.166.136   node1   <none>           <none>
+
+
+
+
+
+
+
+[root@k8master ~]# kubectl get service -o wide
+NAME             TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+db               ClusterIP      10.99.184.12     <none>        5432/TCP       13m     app=demo-voting-app,name=postgres-pod
+kubernetes       ClusterIP      10.96.0.1        <none>        443/TCP        31h     <none>
+redis            ClusterIP      10.100.93.72     <none>        6379/TCP       26m     app=demo-voting-app,name=redis-pod
+result-service   LoadBalancer   10.96.131.185    <pending>     80:32673/TCP   4m36s   app=demo-voting-app,name=result-app-pod
+voting-service   LoadBalancer   10.106.142.155   <pending>     80:31654/TCP   38m     app=demo-voting-app,name=voting-app-pod
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+IMPROVISING APP V2
+
+example-voting-app-kubernetes-v2
+
+===========================
+
+
+
+========================================================================
+Create deployement for redis, postgress, worker and delete old pod files 
+========================================================================
+
+
+https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+
+********************************
+
+
+[root@k8master voting_app]# vim redis-deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  labels:
+    app: redis
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: redis-pod
+      app: demo-voting-app
+
+  template:
+    metadata:
+      name: redis-pod
+      labels:
+        name: redis-pod
+        app: demo-voting-app
+
+    spec:
+      containers:
+      - name: redis
+        image: redis
+        ports:
+        - containerPort: 6379
+
+
+[root@k8master voting_app]# kubectl create -f  redis-deployement.yml  --dry-run=client
+deployment.apps/redis-deployment created (dry run)
+
+
+[root@k8master voting_app]# rm -rf redis-pod.yml
+
+
+
+
+
+********************************
+
+
+
+
+[root@k8master voting_app]# vim postgres-deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  labels:
+    app: demo-voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: postgres-pod
+      app: demo-voting-app
+  template:
+    metadata:
+      name: postgres-pod
+      labels:
+        name: postgres-pod
+        app: demo-voting-app
+
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:9.4
+        env:
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name:  POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: trust
+        ports:
+        - containerPort: 5432
+
+
+
+[root@k8master voting_app]# kubectl create -f  postgres-deployement.yml  --dry-run=client
+deployment.apps/postgres-deployment created (dry run)
+
+[root@k8master voting_app]# rm -rf postgres-pod.yml
+
+
+
+
+********************************
+
+
+
+
+
+
+[root@k8master voting_app]# vim worker-app-deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-app-deployement
+  labels:
+    app: demo-voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: worker-app-pod
+      app: demo-voting-app
+  template:
+    metadata:
+      name: worker-app-pod
+      labels:
+        name: worker-app-pod
+        app: demo-voting-app
+    spec:
+      containers:
+      - name: worker-app
+        image: dockersamples/examplevotingapp_worker
+
+
+
+[root@k8master voting_app]# kubectl create -f  worker-app-deployement.yml  --dry-run=client
+deployment.apps/worker-app-deployement created (dry run)
+
+
+
+[root@k8master voting_app]# rm -rf worker-app-pod.yml
+
+
+
+
+********************************
+
+
+
+[root@k8master voting_app]# vim voting-app-deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voting-app-deployement
+  labels:
+    app: demo-voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: voting-app-pod
+      app: demo-voting-app
+  template:
+    metadata:
+      name: voting-app-pod
+      labels:
+        name: voting-app-pod
+        app: demo-voting-app
+
+    spec:
+      containers:
+      - name: voting-app
+        image: dockersamples/examplevotingapp_vote
+        ports:
+        - containerPort: 80
+
+
+
+
+
+
+
+[root@k8master voting_app]# kubectl create -f  voting-app-deployement.yml  --dry-run=client
+deployment.apps/voting-app-deployement created (dry run)
+
+
+[root@k8master voting_app]# rm -rf voting-app-pod.yml
+
+
+
+
+
+********************************
+[root@k8master voting_app]# vim result-app-deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-app-deployment
+  labels:
+    app: demo-voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: result-app-pod
+      app: demo-voting-app
+  template:
+
+    metadata:
+      name: result-app-pod
+      labels:
+        name: result-app-pod
+        app: demo-voting-app
+
+    spec:
+      containers:
+        - name: result-app
+          image: dockersamples/examplevotingapp_result
+          ports:
+          - containerPort: 80
+
+
+
+
+
+
+
+[root@k8master voting_app]# kubectl create -f  result-app-deployement.yml  --dry-run=client
+deployment.apps/result-app-deployment created (dry run)
+
+
+[root@k8master voting_app]# rm -rf result-app-pod.yml
+
+
+********************************
+
+
+[MASTER--k8]
+-------------------
+[root@k8master voting_app]# ll
+total 36
+-rw-r--r-- 1 root root 656 Jun 18 17:36 postgres-deployement.yml
+-rw-r--r-- 1 root root 217 Jun 18 15:10 postgres-service.yml
+-rw-r--r-- 1 root root 426 Jun 18 17:22 redis-deployement.yml
+-rw-r--r-- 1 root root 220 Jun 18 15:06 redis-service.yml
+-rw-r--r-- 1 root root 503 Jun 18 17:54 result-app-deployement.yml
+-rw-r--r-- 1 root root 253 Jun 18 15:23 result-app-service.yml
+-rw-r--r-- 1 root root 493 Jun 18 17:48 voting-app-deployement.yml
+-rw-r--r-- 1 root root 253 Jun 18 15:17 voting-app-service.yml
+-rw-r--r-- 1 root root 447 Jun 18 17:43 worker-app-deployement.yml
+
+
+
+
+===========================
+Now run the deployements
+===========================
+
+
+[root@k8master voting_app]# kubectl create -f .
+deployment.apps/postgres-deployment created
+deployment.apps/result-app-deployment created
+deployment.apps/worker-app-deployement created
+
+[root@k8master voting_app]# kubectl create -f voting-app-deployement.yml
+deployment.apps/voting-app-deployement created
+
+[root@k8master voting_app]# kubectl create -f redis-deployement.yml
+deployment.apps/redis-deployment created
+
+
+
+
+
+
+
+
+===========================
+viewing resuts
+===========================
+
+
+[MASTER--k8]
+-------------------
+[root@k8master voting_app]# kubectl get all
+NAME                                          READY   STATUS    RESTARTS   AGE
+pod/postgres-deployment-754b645676-fwdw5      1/1     Running   0          9m34s
+pod/postgres-pod                              1/1     Running   0          131m
+pod/redis-deployment-845fd486df-mgj9j         1/1     Running   0          119s
+pod/redis-pod                                 1/1     Running   0          145m
+pod/result-app-deployment-67967b59f-5b45t     1/1     Running   0          9m34s
+pod/result-app-pod                            1/1     Running   0          122m
+pod/voting-app-deployement-68c5c8ff7d-rbcbf   1/1     Running   0          5m45s
+pod/voting-app-pod                            1/1     Running   0          158m
+pod/worker-app-deployement-c5f4bfbb4-4r6rw    1/1     Running   0          9m34s
+pod/worker-app-pod                            1/1     Running   0          124m
+
+NAME                     TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/db               ClusterIP      10.99.184.12     <none>        5432/TCP       130m
+service/kubernetes       ClusterIP      10.96.0.1        <none>        443/TCP        33h
+service/redis            ClusterIP      10.100.93.72     <none>        6379/TCP       143m
+service/result-service   LoadBalancer   10.96.131.185    <pending>     80:32673/TCP   121m
+service/voting-service   LoadBalancer   10.106.142.155   <pending>     80:31654/TCP   155m
+
+NAME                                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/postgres-deployment      1/1     1            1           9m34s
+deployment.apps/redis-deployment         1/1     1            1           119s
+deployment.apps/result-app-deployment    1/1     1            1           9m34s
+deployment.apps/voting-app-deployement   1/1     1            1           5m45s
+deployment.apps/worker-app-deployement   1/1     1            1           9m34s
+
+NAME                                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/postgres-deployment-754b645676      1         1         1       9m34s
+replicaset.apps/redis-deployment-845fd486df         1         1         1       119s
+replicaset.apps/result-app-deployment-67967b59f     1         1         1       9m34s
+replicaset.apps/voting-app-deployement-68c5c8ff7d   1         1         1       5m45s
+replicaset.apps/worker-app-deployement-c5f4bfbb4    1         1         1       9m34s
+
+
+
+
+[MASTER--k8]
+-------------------  voting-app-deployement.yml
+
+If the no of HIT or USER increases, then increment replica on  voting-app-deployement.yml
+
+[root@k8master voting_app]# kubectl scale --replicas=4 -f voting-app-deployement.yml
+deployment.apps/voting-app-deployement scaled
+
+[root@k8master voting_app]# kubectl get  deployments.apps -w -o wide
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES
+postgres-deployment      1/1     1            1           24m   postgres     postgres:9.4
+s-pod
+redis-deployment         1/1     1            1           16m   redis        redis
+od
+result-app-deployment    1/1     1            1           24m   result-app   dockersamples/examplevotinga
+app-pod
+voting-app-deployement   4/4     4            4           20m   voting-app   dockersamples/examplevotinga
+app-pod
+worker-app-deployement   1/1     1            1           24m   worker-app   dockersamples/examplevotinga
+app-pod
+
+
+
+
+
+
+===========================
+From Browser 
+
+run from master or slave IP:external_port
+
+http://192.168.10.200:32673/
+http://192.168.10.201:32673/
+http://192.168.10.202:32673/
+http://192.168.10.203:32673/
+===========================
+
+
+
+
+OR
+
+[root@k8master voting_app]# kubectl scale --replicas=4 -f result-app-deployement.yml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================
+YA
+===========================
+
+
+[MASTER--k8]
+-------------------
+
+
+
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+[MASTER--k8]
+-------------------
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+K8 BASICS
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ____   ___   ____ _  _______ ____    _     _____     _______ 
+|  _ \ / _ \ / ___| |/ / ____|  _ \  | |   |_ _\ \   / / ____|
+| | | | | | | |   | ' /|  _| | |_) | | |    | | \ \ / /|  _|  
+| |_| | |_| | |___| . \| |___|  _ <  | |___ | |  \ V / | |___ 
+|____/ \___/ \____|_|\_\_____|_| \_\ |_____|___|  \_/  |_____|
+
+
+
+===========================
+MICROSERVICE
+example-voting-app-docker-v1
+===========================
+
+
+
+
+****************************************************************
+1. Votting app ,python   ==> 2. in memory DB , redis 
+==> 3. worker, .NET  
+==> 4. DB, postgress  ==> 5. result app, node-js
+****************************************************************
+
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+1. Votting app ,python  
+------------------------
+
+2. in memory DB , redis
+------------------------
+
+3. worker, .NET
+-------------------
+
+4. DB, postgress
+-------------------
+
+5. result app, node-js
+------------------------
+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+[Architectutre to work in docker]
+-------------------
+
+1. Votting app ,python  
+------------------------
+c. docker run -d --name=vote -p 5000:80 dockersamples/examplevotingapp_vote
+c.1 docker run -d --name=vote -p 5000:80 --link redis:redis dockersamples/examplevotingapp_vote
+
+
+
+2. in memory DB , redis
+------------------------
+a. docker run -d --name=redis redis
+
+
+
+
+3. worker, .NET
+-------------------
+d. docker run -d --name=worker  dockersamples/examplevotingapp_worker
+d.3 docker run -d --name=worker  --link db:db --link redis:redis   dockersamples/examplevotingapp_worker  
+
+
+
+4. DB, postgress
+-------------------
+b. docker run -d --name=db postgres:15-alpine
+			or
+		docker run -d --name=db  -e POSTGRES_PASSWORD=postgres postgres:15-alpine
+
+postgres:15-alpine
+
+
+5. result app, node-js
+------------------------
+e. docker run -d --name=result -p 5001:80 dockersamples/examplevotingapp_result
+e.2 docker run -d --name=result -p 5001:80 --link db:db dockersamples/examplevotingapp_result
+
+
+
+
+
+
+
+
+
+
+
+ .oooooo..o   .oooooo.   ooooooooo.   ooooo ooooooooo.   ooooooooooooo 
+d8P'    `Y8  d8P'  `Y8b  `888   `Y88. `888' `888   `Y88. 8'   888   `8 
+Y88bo.      888           888   .d88'  888   888   .d88'      888      
+ `"Y8888o.  888           888ooo88P'   888   888ooo88P'       888      
+     `"Y88b 888           888`88b.     888   888              888      
+oo     .d8P `88b    ooo   888  `88b.   888   888              888      
+8""88888P'   `Y8bood8P'  o888o  o888o o888o o888o            o888o     
+                                                                       
+                                                                       
+
+
+
+===================COPY AND MAKE SCRIPT= schtpt.sh ==============================================
+docker run -d --name=redis redis
+docker run -d --name=db  -e POSTGRES_PASSWORD=postgres postgres:15-alpine
+
+
+docker run -d --name=vote -p 5000:80 --link redis:redis dockersamples/examplevotingapp_vote
+docker run -d --name=result -p 5001:80 --link db:db dockersamples/examplevotingapp_result
+
+docker run -d --name=worker  --link db:db --link redis:redis   dockersamples/examplevotingapp_worker
+
+=================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+============================================================================================
+ _______   ______     ______  __  ___  _______ .______           ______  __       __  
+|       \ /  __  \   /      ||  |/  / |   ____||   _  \         /      ||  |     |  | 
+|  .--.  |  |  |  | |  ,----'|  '  /  |  |__   |  |_)  |       |  ,----'|  |     |  | 
+|  |  |  |  |  |  | |  |     |    <   |   __|  |      /        |  |     |  |     |  | 
+|  '--'  |  `--'  | |  `----.|  .  \  |  |____ |  |\  \----.   |  `----.|  `----.|  | 
+|_______/ \______/   \______||__|\__\ |_______|| _| `._____|    \______||_______||__| 
+                                                                                      
+============================================================================================
+
+
+
+
+
+
+
+========================================
+working for voting-app and redis
+========================================
+
+[root@container ~]# git clone https://github.com/mmumshad/example-voting-app.git
+
+[root@container ~]# cd example-voting-app/
+
+[root@container example-voting-app]# ls
+architecture.png               docker-compose-windows-1809.yml  ExampleVotingApp.sln  result
+azure-pipelines.yml            docker-compose-windows.yml       healthchecks          seed-data
+dockercloud.yml                docker-compose.yml               k8s-specifications    vote
+docker-compose-javaworker.yml  docker-stack-simple.yml          kube-deployment.yml   worker
+docker-compose-k8s.yml         docker-stack-windows-1809.yml    LICENSE
+docker-compose.seed.yml        docker-stack-windows.yml         MAINTAINERS
+docker-compose-simple.yml      docker-stack.yml                 README.md
+[root@container example-voting-app]#
+
+
+
+
+
+[root@container example-voting-app]# cd vote/
+[root@container vote]# ls
+app.py  Dockerfile  dotnet  requirements.txt  static  templates
+
+
+[root@container vote]# docker build . -t votting-app
+
+
+[root@container vote]# docker run -d -p 5000:80 votting-app
+
+[root@container vote]# docker run -d  --name=redis redis
+
+
+[root@container example-voting-app]# docker run -d --name=votting_app -p 5000:80 --link redis:redis votting-app
+
+
+
+
+
+
+
+========================================
+working for postgres and worker
+========================================
+[root@container example-voting-app]# docker run --name=db -e  POSTGRES_PASSWORD=postgres  -d  postgres:15-alpine
+
+
+
+[root@container worker]# cd ..
+[root@container example-voting-app]# cd worker/
+[root@container worker]# ls
+Dockerfile  Dockerfile.j  Dockerfile.net  dotnet  pom.xml  src  target
+
+
+[root@container worker]# docker build . -t working-engine-mediator
+
+
+
+
+[root@container worker]# docker images
+REPOSITORY                TAG         IMAGE ID       CREATED          SIZE
+votting-app               latest      59de423dbb1a   13 minutes ago   164MB
+redis                     latest      4695a05c473a   2 hours ago      130MB
+working-engine-mediator   latest      cfe080b2dbff   2 weeks ago      193MB
+postgres                  15-alpine   696ffaadb338   2 weeks ago      237MB
+
+
+
+[root@container worker]# docker run -d --name worker_engine_WINDOWS  --link redis:redis --link db:db  working-engine-mediator
+
+
+[root@container worker]# docker ps
+CONTAINER ID   IMAGE                     COMMAND                  CREATED          STATUS          PORTS                                   NAMES
+0ae5f5b83dad   working-engine-mediator   "dotnet Worker.dll"      19 seconds ago   Up 17 seconds                                           worker_engine_WINDOWS
+ef8747c2d960   postgres:15-alpine        "docker-entrypoint.s…"   4 minutes ago    Up 4 minutes    5432/tcp                                db
+b56bcbd98d24   votting-app               "gunicorn app:app -b…"   7 minutes ago    Up 7 minutes    0.0.0.0:5002->80/tcp, :::5002->80/tcp   vottting_app
+cc8028398439   redis                     "docker-entrypoint.s…"   10 minutes ago   Up 10 minutes   6379/tcp                                redis
+
+
+
+
+
+
+
+
+========================================
+working for result app
+========================================
+
+[root@container example-voting-app]# cd result/
+[root@container result]# ls
+docker-compose.test.yml  dotnet        package-lock.json  tests
+Dockerfile               package.json  server.js          views
+
+
+[root@container result]# docker build . -t resulting-app
+
+
+
+[root@container result]# docker images
+REPOSITORY                TAG         IMAGE ID       CREATED          SIZE
+votting-app               latest      59de423dbb1a   20 minutes ago   164MB
+redis                     latest      4695a05c473a   2 hours ago      130MB
+resulting-app             latest      a7e9a06cc11e   2 weeks ago      143MB
+working-engine-mediator   latest      cfe080b2dbff   2 weeks ago      193MB
+postgres                  15-alpine   696ffaadb338   2 weeks ago      237MB
+
+
+
+
+[root@container result]# docker run -d -p 5001:80 --name result_app --link db:db resulting-app
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+====================================================================================================================================
+ _______   ______     ______  __  ___  _______ .______              ______   ______   .___  ___. .______     _______. _______ 
+|       \ /  __  \   /      ||  |/  / |   ____||   _  \            /      | /  __  \  |   \/   | |   _  \   /       ||   ____|
+|  .--.  |  |  |  | |  ,----'|  '  /  |  |__   |  |_)  |    ______|  ,----'|  |  |  | |  \  /  | |  |_)  | |   (----`|  |__   
+|  |  |  |  |  |  | |  |     |    <   |   __|  |      /    |______|  |     |  |  |  | |  |\/|  | |   ___/   \   \    |   __|  
+|  '--'  |  `--'  | |  `----.|  .  \  |  |____ |  |\  \----.      |  `----.|  `--'  | |  |  |  | |  |   .----)   |   |  |____ 
+|_______/ \______/   \______||__|\__\ |_______|| _| `._____|       \______| \______/  |__|  |__| | _|   |_______/    |_______|
+                                                                                                                              
+====================================================================================================================================
+
+[root@container example-voting-app]# pwd
+/root/example-voting-app
+
+
+[root@container example-voting-app]# ls
+architecture.png                 docker-stack-windows.yml
+azure-pipelines.yml              docker-stack.yml
+dockercloud.yml                  ExampleVotingApp.sln
+docker-compose_backup.yml        healthchecks
+docker-compose-javaworker.yml    k8s-specifications
+docker-compose-k8s.yml           kube-deployment.yml
+docker-compose.seed.yml          LICENSE
+docker-compose-simple.yml        MAINTAINERS
+docker-compose-windows-1809.yml  README.md
+docker-compose-windows.yml       result
+docker-compose.yml               seed-data
+docker-stack-simple.yml          vote
+docker-stack-windows-1809.yml    worker
+
+
+
+
+
+
+[root@container example-voting-app]# vi docker-compose.yml
+version: "3"
+
+services:
+  vote:
+    image: votting-app
+    build: ./vote
+    command: python app.py
+    volumes:
+      - ./vote:/app
+    ports:
+      - "5000:80"
+
+  redis:
+    image: redis
+    ports: ["6379"]
+
+  worker:
+    image: worker-app
+    build: ./worker
+
+  db:
+    image: postgres:9.4
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+
+  result:
+    image: result-app
+    build: ./result
+    command: nodemon server.js
+    volumes:
+      - ./result:/app
+    ports:
+      - "5001:80"
+      - "5858:5858"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[root@container example-voting-app]# docker-compose up -d
+
+
+Creating examplevotingapp_result_1 ... done
+Creating examplevotingapp_worker_1 ... done
+Creating examplevotingapp_vote_1   ... done
+Creating examplevotingapp_db_1     ... done
+Creating examplevotingapp_redis_1  ... done
+
+
+
+
+
+
+
+[root@container example-voting-app]# docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS                                                                              NAMES
+77465692ea35   postgres:9.4   "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes   5432/tcp                                                                           examplevotingapp_db_1
+bc43b7e55ab9   redis          "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes   0.0.0.0:32768->6379/tcp, :::32768->6379/tcp                                        examplevotingapp_redis_1
+64b37a4073ce   result-app     "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes   0.0.0.0:5858->5858/tcp, :::5858->5858/tcp, 0.0.0.0:5001->80/tcp, :::5001->80/tcp   examplevotingapp_result_1
+a1983ba4db3c   worker-app     "dotnet Worker.dll"      2 minutes ago   Up 2 minutes                                                                                      examplevotingapp_worker_1
+530ff71857e9   votting-app    "python app.py"          2 minutes ago   Up 2 minutes   0.0.0.0:5000->80/tcp, :::5000->80/tcp                                              examplevotingapp_vote_1
+
+
+
+
+****************************************************************************************************************************************************************
+****************************************************************************************************************************************************************
+****************************************************************************************************************************************************************
+****************************************************************************************************************************************************************
+****************************************************************************************************************************************************************
+
+
+
+
+
+
+
+
+

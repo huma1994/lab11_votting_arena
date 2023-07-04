@@ -7,7 +7,7 @@ services:
     volumes:
      - ./vote:/app
     ports:
-      - "5000:80"
+      - "5008:80"
 
   redis:
     image: redis:alpine
@@ -28,5 +28,5 @@ services:
     volumes:
       - ./result:/app
     ports:
-      - "5001:80"
+      - "5009:80"
       - "5858:5858"
